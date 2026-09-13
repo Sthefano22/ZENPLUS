@@ -1,0 +1,11 @@
+{
+  "name": "zenplus-os",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["apps/*", "modules/*", "packages/*"],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/api",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  }
+}

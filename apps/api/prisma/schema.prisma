@@ -1,0 +1,137 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["crm", "iam"]
+}
+
+model Lead {
+  id             String       @id @default(cuid())
+  source         LeadSource
+  status         LeadStatus   @default(NEW)
+  fullName       String
+  email          String?
+  phone          String?
+  message        String?
+  assetId        String?
+  partyId        String?
+  party          Party?       @relation(fields: [partyId], references: [id])
+  assignedTo     String?
+  slaDueAt       DateTime?
+  firstContactAt DateTime?
+  qualifiedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  activities     Activity[]
+  opportunity    Opportunity?
+
+  @@index([status])
+  @@index([assignedTo])
+  @@index([email])
+  @@index([phone])
+  @@map("lead")
+  @@schema("crm")
+}
+
+enum LeadSource {
+  WEB_FORM
+  WHATSAPP
+  PHONE
+  REFERRAL
+  OTHER
+
+  @@schema("crm")
+}
+
+enum LeadStatus {
+  NEW
+  ASSIGNED
+  CONTACTED
+  QUALIFIED
+  DISQUALIFIED
+  CONVERTED
+
+  @@schema("crm")
+}
+
+model Activity {
+  id        String       @id @default(cuid())
+  leadId    String
+  lead      Lead         @relation(fields: [leadId], references: [id])
+  type      ActivityType
+  outcome   String?
+  notes     String?
+  createdBy String
+  createdAt DateTime     @default(now())
+
+  @@index([leadId])
+  @@map("activity")
+  @@schema("crm")
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  WHATSAPP
+  MEETING
+  NOTE
+
+  @@schema("crm")
+}
+
+model Party {
+  id        String    @id @default(cuid())
+  type      PartyType
+  email     String?   @unique
+  phone     String?
+  fullName  String?
+  company   String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  leads     Lead[]
+
+  @@map("party")
+  @@schema("crm")
+}
+
+enum PartyType {
+  PERSON
+  ORGANIZATION
+
+  @@schema("crm")
+}
+
+model Opportunity {
+  id           String            @id @default(cuid())
+  leadId       String            @unique
+  lead         Lead              @relation(fields: [leadId], references: [id])
+  stage        OpportunityStage  @default(NEW)
+  amount       Decimal?
+  currency     String            @default("PEN")
+  nextAction   String?
+  nextActionAt DateTime?
+  closedAt     DateTime?
+  closeReason  String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([stage])
+  @@map("opportunity")
+  @@schema("crm")
+}
+
+enum OpportunityStage {
+  NEW
+  QUALIFIED
+  VISIT_SCHEDULED
+  OFFER
+  RESERVATION
+  WON
+  LOST
+
+  @@schema("crm")
+}
