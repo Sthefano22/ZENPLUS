@@ -6,6 +6,10 @@ node_modules/
 .env.local
 .env.*.local
 
+# Next.js
+.next/
+apps/web/.next/
+
 # Build
 dist/
 build/
