@@ -1,0 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-surface: #0d1320;
+  --color-surface-container-lowest: #080e1b;
+  --color-surface-container-low: #161b29;
+  --color-surface-container: #1a1f2d;
+  --color-surface-container-high: #242a38;
+  --color-surface-bright: #333948;
+
+  --color-primary: #ffe795;
+  --color-on-primary: #3b2f00;
+  --color-primary-container: #e6ca65;
+  --color-on-primary-container: #675400;
+
+  --color-secondary: #bdc6e2;
+  --color-on-surface: #dde2f5;
+  --color-on-surface-variant: #cec6b2;
+
+  --color-error: #ffb4ab;
+  --color-outline: #97907e;
+  --color-outline-variant: #4c4637;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-surface);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-surface-container-lowest);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-bright);
+  border-radius: 9999px;
+}
