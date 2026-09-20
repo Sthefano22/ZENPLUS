@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
 import { requestIdHook } from "./lib/requestId";
 import { registerAuth } from "./plugins/auth";
 import { registerErrorHandler } from "./plugins/errorHandler";
@@ -12,6 +13,11 @@ async function main() {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
 
   await app.register(cors, { origin: true });
+  await app.register(rateLimit, {
+    max: 100,
+    timeWindow: "1 minute",
+    keyGenerator: (req) => req.ip,
+  });
   await registerAuth(app);
   app.addHook("onRequest", requestIdHook);
   registerErrorHandler(app);
