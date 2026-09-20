@@ -6,7 +6,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["crm", "iam"]
+  schemas  = ["core", "crm", "iam", "inventory"]
 }
 
 model Lead {
@@ -19,14 +19,14 @@ model Lead {
   message        String?
   assetId        String?
   partyId        String?
-  party          Party?       @relation(fields: [partyId], references: [id])
   assignedTo     String?
   slaDueAt       DateTime?
   firstContactAt DateTime?
-  qualifiedAt    DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  qualifiedAt    DateTime?
   activities     Activity[]
+  party          Party?       @relation(fields: [partyId], references: [id])
   opportunity    Opportunity?
 
   @@index([status])
@@ -35,6 +35,168 @@ model Lead {
   @@index([phone])
   @@map("lead")
   @@schema("crm")
+}
+
+model Activity {
+  id        String       @id @default(cuid())
+  leadId    String
+  type      ActivityType
+  outcome   String?
+  notes     String?
+  createdBy String
+  createdAt DateTime     @default(now())
+  lead      Lead         @relation(fields: [leadId], references: [id])
+
+  @@index([leadId])
+  @@map("activity")
+  @@schema("crm")
+}
+
+model Party {
+  id        String    @id @default(cuid())
+  type      PartyType
+  email     String?   @unique
+  phone     String?
+  fullName  String?
+  company   String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  leads     Lead[]
+
+  @@map("party")
+  @@schema("crm")
+}
+
+model Opportunity {
+  id           String           @id @default(cuid())
+  leadId       String           @unique
+  stage        OpportunityStage @default(NEW)
+  amount       Decimal?
+  currency     String           @default("PEN")
+  nextAction   String?
+  nextActionAt DateTime?
+  closedAt     DateTime?
+  closeReason  String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  lead         Lead             @relation(fields: [leadId], references: [id])
+
+  @@index([stage])
+  @@map("opportunity")
+  @@schema("crm")
+}
+
+model Asset {
+  id                  String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code                String                @unique @db.VarChar(50)
+  name                String                @db.VarChar(150)
+  description         String?
+  assetType           asset_type            @map("asset_type")
+  status              asset_status          @default(DRAFT)
+  ownerPartyId        String?               @map("owner_party_id") @db.Uuid
+  areaM2              Decimal               @map("area_m2") @db.Decimal(10, 2)
+  currency            String                @default("USD") @db.VarChar(3)
+  currentPrice        Decimal               @map("current_price") @db.Decimal(12, 2)
+  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  asset_price_history asset_price_history[]
+  asset_prices        asset_prices[]
+  timeline            AssetTimeline[]
+  parties             parties?              @relation(fields: [ownerPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([code], map: "idx_assets_code")
+  @@index([ownerPartyId], map: "idx_assets_owner")
+  @@index([status], map: "idx_assets_status")
+  @@map("assets")
+  @@schema("inventory")
+}
+
+model AssetTimeline {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetId        String    @map("asset_id") @db.Uuid
+  previousStatus String?   @map("previous_status") @db.VarChar(50)
+  newStatus      String    @map("new_status") @db.VarChar(50)
+  actionType     String    @default("STATUS_CHANGE") @map("action_type") @db.VarChar(50)
+  details        String?
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  asset          Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([assetId], map: "idx_asset_timeline_asset_id")
+  @@map("asset_timeline")
+  @@schema("inventory")
+}
+
+model organizations {
+  party_id   String   @id @db.Uuid
+  legal_name String   @db.VarChar(200)
+  trade_name String?  @db.VarChar(200)
+  tax_id     String   @unique @db.VarChar(20)
+  email      String?  @db.VarChar(150)
+  phone      String?  @db.VarChar(30)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  parties    parties  @relation(fields: [party_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([tax_id], map: "idx_organizations_tax_id")
+  @@schema("core")
+}
+
+model parties {
+  id                  String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  party_type          party_type
+  created_at          DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime              @default(now()) @db.Timestamptz(6)
+  organizations       organizations?
+  persons             persons?
+  asset_price_history asset_price_history[]
+  assets              Asset[]
+
+  @@schema("core")
+}
+
+model persons {
+  party_id   String   @id @db.Uuid
+  first_name String   @db.VarChar(100)
+  last_name  String   @db.VarChar(100)
+  doc_type   String   @db.VarChar(20)
+  doc_number String   @unique @db.VarChar(20)
+  email      String   @unique @db.VarChar(150)
+  phone      String?  @db.VarChar(30)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  parties    parties  @relation(fields: [party_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([doc_number], map: "idx_persons_doc_number")
+  @@index([email], map: "idx_persons_email")
+  @@schema("core")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model asset_price_history {
+  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  asset_id   String    @db.Uuid
+  price      Decimal   @db.Decimal(12, 2)
+  currency   String    @default("USD") @db.VarChar(3)
+  valid_from DateTime  @default(now()) @db.Timestamptz(6)
+  valid_to   DateTime? @db.Timestamptz(6)
+  changed_by String?   @db.Uuid
+  reason     String?
+  assets     Asset     @relation(fields: [asset_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  parties    parties?  @relation(fields: [changed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([asset_id], map: "idx_price_history_asset")
+  @@schema("inventory")
+}
+
+model asset_prices {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  asset_id   String    @db.Uuid
+  currency   String?   @default("USD") @db.VarChar(3)
+  amount     Decimal   @db.Decimal(12, 2)
+  is_current Boolean?  @default(true)
+  valid_from DateTime? @default(now()) @db.Timestamptz(6)
+  valid_to   DateTime? @db.Timestamptz(6)
+  assets     Asset     @relation(fields: [asset_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("inventory")
 }
 
 enum LeadSource {
@@ -58,21 +220,6 @@ enum LeadStatus {
   @@schema("crm")
 }
 
-model Activity {
-  id        String       @id @default(cuid())
-  leadId    String
-  lead      Lead         @relation(fields: [leadId], references: [id])
-  type      ActivityType
-  outcome   String?
-  notes     String?
-  createdBy String
-  createdAt DateTime     @default(now())
-
-  @@index([leadId])
-  @@map("activity")
-  @@schema("crm")
-}
-
 enum ActivityType {
   CALL
   EMAIL
@@ -83,44 +230,10 @@ enum ActivityType {
   @@schema("crm")
 }
 
-model Party {
-  id        String    @id @default(cuid())
-  type      PartyType
-  email     String?   @unique
-  phone     String?
-  fullName  String?
-  company   String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  leads     Lead[]
-
-  @@map("party")
-  @@schema("crm")
-}
-
 enum PartyType {
   PERSON
   ORGANIZATION
 
-  @@schema("crm")
-}
-
-model Opportunity {
-  id           String            @id @default(cuid())
-  leadId       String            @unique
-  lead         Lead              @relation(fields: [leadId], references: [id])
-  stage        OpportunityStage  @default(NEW)
-  amount       Decimal?
-  currency     String            @default("PEN")
-  nextAction   String?
-  nextActionAt DateTime?
-  closedAt     DateTime?
-  closeReason  String?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-
-  @@index([stage])
-  @@map("opportunity")
   @@schema("crm")
 }
 
@@ -134,4 +247,31 @@ enum OpportunityStage {
   LOST
 
   @@schema("crm")
+}
+
+enum party_type {
+  PERSON
+  ORGANIZATION
+
+  @@schema("core")
+}
+
+enum asset_status {
+  DRAFT
+  UNDER_REVIEW
+  AVAILABLE
+  RESERVED
+  SOLD
+  IN_REVIEW
+
+  @@schema("inventory")
+}
+
+enum asset_type {
+  LOT
+  APARTMENT
+  HOUSE
+  COMMERCIAL_SPACE
+
+  @@schema("inventory")
 }
