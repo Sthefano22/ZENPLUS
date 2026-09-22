@@ -11,6 +11,7 @@ import { leadRoutes } from "./modules/crm/lead.routes";
 import { opportunityRoutes } from "./modules/crm/opportunity.routes";
 import { assetRoutes } from "./modules/inventory/asset.routes";
 import { authRoutes } from "./modules/iam/auth.routes";
+import { projectRoutes } from "./modules/inventory/project.routes";
 
 async function main() {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
@@ -39,6 +40,7 @@ async function main() {
   await app.register(opportunityRoutes);
   await app.register(assetRoutes);
   await app.register(authRoutes);
+  await app.register(projectRoutes);
 
   const port = Number(process.env.PORT ?? 3000);
   await app.listen({ port, host: "0.0.0.0" });
