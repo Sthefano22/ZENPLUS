@@ -2,7 +2,9 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import { requestIdHook } from "./lib/requestId";
+import { increment } from "./lib/metrics";
 import { registerAuth } from "./plugins/auth";
+import { registerAuthorize } from "./plugins/authorize";
 import { registerErrorHandler } from "./plugins/errorHandler";
 import { platformRoutes } from "./modules/platform/health";
 import { leadRoutes } from "./modules/crm/lead.routes";
@@ -19,8 +21,17 @@ async function main() {
     timeWindow: "1 minute",
     keyGenerator: (req) => req.ip,
   });
+
   await registerAuth(app);
+  await registerAuthorize(app);
+
   app.addHook("onRequest", requestIdHook);
+  app.addHook("onResponse", async (req, reply) => {
+    const route = (req as any).routeOptions?.url ?? req.url;
+    increment(`request:${req.method}:${route}:${reply.statusCode}`);
+    increment(`request:${req.method}:total`);
+  });
+
   registerErrorHandler(app);
 
   await app.register(platformRoutes);

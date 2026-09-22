@@ -1,15 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import {
-  createLeadSchema,
-  contactLeadSchema,
-  qualifyLeadSchema,
-} from "./lead.schema";
-import {
-  createLead,
-  listMyLeads,
-  registerContact,
-  qualifyLead,
-} from "./lead.service";
+import {createLeadSchema, contactLeadSchema, qualifyLeadSchema} from "./lead.schema";
+import {createLead, listMyLeads, registerContact, qualifyLead} from "./lead.service";
 import { isEnabled } from "../../lib/featureFlags";
 
 export async function leadRoutes(app: FastifyInstance) {

@@ -1,21 +1,9 @@
 import type { FastifyInstance } from "fastify";
-import {
-  createAssetSchema,
-  changeStatusSchema,
-  publicAssetsQuerySchema,
-} from "./asset.schema";
-import {
-  listPublicAssets,
-  getAssetById,
-  listAllAssets,
-  createAsset,
-  changeAssetStatus,
-  getAssetTimeline,
-} from "./asset.service";
+import {createAssetSchema, changeStatusSchema, publicAssetsQuerySchema} from "./asset.schema";
+import {listPublicAssets, getAssetById, listAllAssets, createAsset, changeAssetStatus, getAssetTimeline} from "./asset.service";
 import { isEnabled } from "../../lib/featureFlags";
 
 export async function assetRoutes(app: FastifyInstance) {
-  // ─── Público ─────────────────────────────
   app.get("/public/assets", async (req, reply) => {
     if (!isEnabled("PUBLIC_ASSETS")) {
       return reply.status(503).send({
@@ -50,9 +38,7 @@ export async function assetRoutes(app: FastifyInstance) {
     async () => listAllAssets()
   );
 
-  app.post(
-    "/assets",
-    { preHandler: [(app as any).authenticate] },
+  app.post("/assets", { preHandler: [(app as any).authorize(["ADMIN"])] },
     async (req: any, reply) => {
       const input = createAssetSchema.parse(req.body);
       const asset = await createAsset(input);
@@ -60,9 +46,7 @@ export async function assetRoutes(app: FastifyInstance) {
     }
   );
 
-  app.patch(
-    "/assets/:id/status",
-    { preHandler: [(app as any).authenticate] },
+  app.patch("/assets/:id/status", { preHandler: [(app as any).authorize(["ADMIN"])] },
     async (req: any, reply) => {
       const input = changeStatusSchema.parse(req.body);
       try {

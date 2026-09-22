@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../../lib/prisma";
 import { getAllMetrics } from "../../lib/metrics";
+import { getAllFlags } from "../../lib/featureFlags";
 
 export async function platformRoutes(app: FastifyInstance) {
   app.get("/health", async () => ({
@@ -32,4 +33,6 @@ export async function platformRoutes(app: FastifyInstance) {
     metrics: getAllMetrics(),
     timestamp: new Date().toISOString(),
   }));
+
+  app.get("/flags", async () => getAllFlags());
 }
