@@ -10,9 +10,17 @@ import {
   registerContact,
   qualifyLead,
 } from "./lead.service";
+import { isEnabled } from "../../lib/featureFlags";
 
 export async function leadRoutes(app: FastifyInstance) {
   app.post("/public/leads", async (req, reply) => {
+    if (!isEnabled("LEAD_INTAKE")) {
+      return reply.status(503).send({
+        error: "FEATURE_DISABLED",
+        message: "Lead intake temporalmente deshabilitado",
+      });
+    }
+
     const input = createLeadSchema.parse(req.body);
     const lead = await createLead(input);
     return reply.status(201).send({

@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../../lib/prisma";
+import { getAllMetrics } from "../../lib/metrics";
 
 export async function platformRoutes(app: FastifyInstance) {
   app.get("/health", async () => ({
@@ -26,4 +27,9 @@ export async function platformRoutes(app: FastifyInstance) {
       role: req.user.role,
     })
   );
+
+  app.get("/metrics", async () => ({
+    metrics: getAllMetrics(),
+    timestamp: new Date().toISOString(),
+  }));
 }

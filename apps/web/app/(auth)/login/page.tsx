@@ -14,17 +14,40 @@ export default function LoginPage() {
   const [recordar, setRecordar] = useState(false)
   const [cargando, setCargando] = useState(false)
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setCargando(true)
-    
-    document.cookie = 'zenplus_session=mock; path=/'
-    setTimeout(() => router.push('/'), 400)
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
+
+      const res = await fetch(`${apiUrl}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+
+      if (!res.ok) {
+        setCargando(false)
+        alert('Credenciales inválidas. Verifica tu correo y contraseña.')
+        return
+      }
+
+      const data = await res.json()
+
+      // Guardar token en cookie
+      document.cookie = `zenplus_session=${data.token}; path=/; max-age=604800` // 7 días
+
+      router.push('/')
+    } catch (err) {
+      console.error('Login error:', err)
+      setCargando(false)
+      alert('Error al conectar con el servidor. Intenta nuevamente.')
+    }
   }
 
   return (
     <div className="flex min-h-screen w-full">
-      
       <div className="relative hidden w-[40%] lg:block">
         <Image
           src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=80"
@@ -51,7 +74,6 @@ export default function LoginPage() {
         </div>
       </div>
 
-      
       <div className="relative flex w-full items-center justify-center bg-surface-container-lowest px-6 lg:w-[60%]">
         <Link
           href="/"

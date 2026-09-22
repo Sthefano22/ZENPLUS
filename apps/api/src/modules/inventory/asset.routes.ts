@@ -12,15 +12,30 @@ import {
   changeAssetStatus,
   getAssetTimeline,
 } from "./asset.service";
+import { isEnabled } from "../../lib/featureFlags";
 
 export async function assetRoutes(app: FastifyInstance) {
   // ─── Público ─────────────────────────────
-  app.get("/public/assets", async (req) => {
+  app.get("/public/assets", async (req, reply) => {
+    if (!isEnabled("PUBLIC_ASSETS")) {
+      return reply.status(503).send({
+        error: "FEATURE_DISABLED",
+        message: "Catálogo público temporalmente deshabilitado",
+      });
+    }
+
     const filters = publicAssetsQuerySchema.parse(req.query);
     return listPublicAssets(filters);
   });
 
   app.get("/public/assets/:id", async (req: any, reply) => {
+    if (!isEnabled("PUBLIC_ASSETS")) {
+      return reply.status(503).send({
+        error: "FEATURE_DISABLED",
+        message: "Catálogo público temporalmente deshabilitado",
+      });
+    }
+
     const asset = await getAssetById(req.params.id);
     if (!asset) {
       return reply.status(404).send({ error: "ASSET_NOT_FOUND" });
