@@ -44,7 +44,7 @@ Un solo ecosistema, varias experiencias.
 
 ## Estructura del monorepo
 
-```
+```text
 ZENPLUS/
 ├── apps/              → Aplicaciones
 │   ├── api/           → Backend (Beta: Fastify + Prisma)
@@ -64,93 +64,5 @@ ZENPLUS/
 │   ├── api/           → Contratos
 │   ├── reports/       → Reportes de sprint
 │   ├── security/      → Baseline
-│   └── adr/           → Decisiones
+│   └── adr/            → Decisiones
 └── .github/           → CI/CD
-```
-
-## Células
-
-| Célula | Alcance | Carpetas |
-|--------|---------|----------|
-| Alpha | Inventory + Data | `modules/core`, `modules/inventory`, `database` |
-| Beta | Platform + CRM | `apps/api`, `modules/iam`, `modules/crm` |
-| Gamma | Web + Frontend | `apps/web`, `packages/ui`, `packages/tokens` |
-
-## Cómo contribuir
-
-```bash
-# 1. Clonar
-git clone https://github.com/Sthefano22/ZENPLUS.git
-cd ZENPLUS
-
-# 2. Crear branch con ID del ticket
-git checkout -b feature/alpha-inventory-assets
-# o
-git checkout -b feature/gamma-web-home
-# o
-git checkout -b feature/beta-crm-opportunity
-
-# 3. Trabajar SOLO en tus carpetas asignadas
-# 4. Commit
-git add .
-git commit -m "feat(alpha): initial inventory module"
-
-# 5. Push
-git push origin feature/alpha-inventory-assets
-
-# 6. Abrir Pull Request en GitHub
-```
-
-## Cómo levantar el backend (Beta)
-
-```bash
-cd apps/api
-npm install
-cp .env.example .env
-# Editar .env con DATABASE_URL de Neon (solicitar al líder)
-npx prisma generate
-npx prisma migrate dev
-npm run prisma:seed
-npm run dev
-```
-
-El servidor corre en `http://localhost:3000`.
-
-## Cómo correr tests
-
-```bash
-cd apps/api
-npm test
-```
-
-## Endpoints principales
-
-| Método | Ruta | Auth | Descripción |
-|--------|------|------|-------------|
-| GET | /health | No | Health check |
-| GET | /health/db | No | DB health |
-| POST | /public/leads | No | Lead intake desde Web |
-| GET | /crm/leads/me | JWT | My Leads |
-| POST | /crm/leads/:id/contact | JWT | Registrar contacto |
-| POST | /crm/leads/:id/qualify | JWT | Convertir a Opportunity |
-| GET | /crm/opportunities | JWT | Listar Opportunities |
-| GET | /crm/opportunities/:id | JWT | Detalle de Opportunity |
-| GET | /crm/pipeline | JWT | Pipeline por stage |
-| PATCH | /crm/opportunities/:id/stage | JWT | Cambiar stage |
-
-Contratos completos en `docs/api/`.
-
-## Documentación
-
-- `docs/api/` — Contratos de API
-- `docs/reports/` — Reportes de sprint y handover
-- `docs/security/` — Baseline de seguridad
-- `docs/adr/` — Decisiones de arquitectura
-
-## Repositorio
-
-https://github.com/Sthefano22/ZENPLUS
-
-## ZENPLUS Digital Lab
-
-Construimos bienestar, creamos patrimonio.
