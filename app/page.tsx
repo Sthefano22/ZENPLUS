@@ -70,11 +70,6 @@ export default function InventoryAdminPage() {
     currency: 'USD',
   });
 
-  useEffect(() => {
-    let isMounted = true;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
 
   useEffect(() => {
