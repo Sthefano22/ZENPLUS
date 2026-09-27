@@ -157,6 +157,24 @@ export async function POST(request: Request) {
     `;
     await client.query(historyQuery, [assetId, actorId || null]);
 
+    // 7. Eventos de Dominio de Inventario (ALP2-008)
+    // Permite que CRM y Web reaccionen al cambio de disponibilidad
+    const domainEventQuery = `
+      INSERT INTO inventory_domain_events (event_type, aggregate_type, aggregate_id, payload)
+      VALUES ('asset_availability_changed', 'ASSET', $1, $2::jsonb);
+    `;
+    const eventPayload = {
+      assetId,
+      reservationId,
+      previousStatus: 'AVAILABLE',
+      newStatus: 'RESERVATION_HOLD',
+      reason: 'HOLD_RESERVATION_CREATED',
+      holdExpiresInMinutes: 15,
+      actorId: actorId || null,
+      occurredAt: new Date().toISOString(),
+    };
+    await client.query(domainEventQuery, [assetId, JSON.stringify(eventPayload)]);
+
     // Confirmar todas las operaciones de forma atómica
     await client.query('COMMIT');
 

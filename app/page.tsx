@@ -5,14 +5,35 @@ import { useEffect, useState } from 'react';
 interface Asset {
   id: string;
   code: string;
-  name: string;
-  description: string;
-  assetType: string;
-  status: string;
-  areaM2: string;
-  currency: string;
-  currentPrice: string;
-  owner: string;
+  title?: string;
+  name?: string;
+  description: string | null;
+  assetType?: string;
+  price?: string | number;
+  currentPrice?: string | number;
+  area?: string | number;
+  areaM2?: string | number;
+  commercialStatus?: string;
+  publicationStatus?: string;
+  status?: string;
+  holdExpiresAt?: string | null;
+  currency?: string;
+  owner?: string;
+}
+
+interface ProjectSummary {
+  projectId: string;
+  projectName: string;
+  projectCode: string;
+  district: string;
+  city: string;
+  totalUnits: number;
+  availableUnits: number;
+  reservedUnits: number;
+  soldUnits: number;
+  minPrice: string;
+  maxPrice: string;
+  availabilityPercentage: string;
 }
 
 interface TimelineEvent {
@@ -49,25 +70,38 @@ export default function InventoryAdminPage() {
     currency: 'USD',
   });
 
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
+
   useEffect(() => {
     let isMounted = true;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    async function loadAssets() {
+    async function loadData() {
       try {
         setLoading(true);
-        const res = await fetch('/api/assets', { signal: controller.signal, cache: 'no-store' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const [assetsRes, projectsRes] = await Promise.all([
+          fetch('/api/assets', { signal: controller.signal, cache: 'no-store' }),
+          fetch('/api/projects', { signal: controller.signal, cache: 'no-store' }),
+        ]);
 
-        const json = await res.json();
+        if (!assetsRes.ok) throw new Error(`HTTP ${assetsRes.status}`);
+
+        const assetsJson = await assetsRes.json();
+        if (projectsRes.ok) {
+          const projectsJson = await projectsRes.json();
+          if (projectsJson.success && isMounted) {
+            setProjects(projectsJson.data);
+          }
+        }
+
         if (!isMounted) return;
 
-        if (json.success) {
-          setAssets(json.data);
+        if (assetsJson.success) {
+          setAssets(assetsJson.data);
           setError(null);
         } else {
-          setError(json.error || 'Error reportado por la API');
+          setError(assetsJson.error || 'Error reportado por la API');
         }
       } catch (err: unknown) {
         if (!isMounted) return;
@@ -79,7 +113,7 @@ export default function InventoryAdminPage() {
       }
     }
 
-    loadAssets();
+    loadData();
 
     return () => {
       isMounted = false;
@@ -163,10 +197,12 @@ export default function InventoryAdminPage() {
     switch (status) {
       case 'AVAILABLE':
         return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+      case 'RESERVATION_HOLD':
+        return 'bg-amber-500/20 text-amber-300 border-amber-500/50 animate-pulse';
       case 'IN_REVIEW':
         return 'bg-purple-500/10 text-purple-400 border-purple-500/30';
       case 'DRAFT':
-        return 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+        return 'bg-slate-500/10 text-slate-400 border-slate-500/30';
       case 'RESERVED':
         return 'bg-blue-500/10 text-blue-400 border-blue-500/30';
       case 'SOLD':
@@ -183,15 +219,15 @@ export default function InventoryAdminPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                Ola 1 · Sprint 2
+                Fase 2 · Commercial Engine
               </span>
-              <span className="text-xs text-slate-400">Célula Alpha</span>
+              <span className="text-xs text-slate-400">Célula Alpha · ALP2-005 al ALP2-010</span>
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-white mt-1">
-              ZENPLUS OS — Catálogo de Inventario
+              ZENPLUS OS — Motor de Disponibilidad e Inventario
             </h1>
             <p className="text-sm text-slate-400">
-              Gestión del ciclo de vida, auditoría de estados y timeline
+              Proyección de reservas (Hold), concurrencia atómica, agregación de proyectos y eventos
             </p>
           </div>
 
@@ -200,14 +236,67 @@ export default function InventoryAdminPage() {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
               Neon DB Conectado
             </span>
-            <button
-              onClick={() => setIsOpen(true)}
-              className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-2 rounded-lg font-semibold text-xs tracking-wide transition-colors cursor-pointer"
-            >
-              + Nuevo Inmueble (DRAFT)
-            </button>
           </div>
         </header>
+
+        {/* Sección de Proyectos y Disponibilidad Agregada (ALP2-006) */}
+        {projects.length > 0 && (
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs uppercase tracking-wider font-semibold text-slate-400">
+                Disponibilidad Agregada por Proyecto (Ticket ALP2-006)
+              </h2>
+              <span className="text-xs text-slate-500">{projects.length} Proyectos Registrados</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {projects.map((p) => (
+                <div
+                  key={p.projectId}
+                  className="bg-slate-900/80 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <span className="text-xs font-mono text-amber-400 font-semibold">{p.projectCode}</span>
+                      <h3 className="text-base font-bold text-white mt-0.5">{p.projectName}</h3>
+                      <p className="text-xs text-slate-400">
+                        {p.district}, {p.city}
+                      </p>
+                    </div>
+                    <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                      {p.availabilityPercentage}% Libre
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-2 pt-3 border-t border-slate-800/80 text-center">
+                    <div className="bg-slate-950/60 rounded p-2">
+                      <div className="text-xs text-slate-500">Total</div>
+                      <div className="text-sm font-bold text-white">{p.totalUnits}</div>
+                    </div>
+                    <div className="bg-slate-950/60 rounded p-2">
+                      <div className="text-xs text-emerald-400">Disponibles</div>
+                      <div className="text-sm font-bold text-emerald-400">{p.availableUnits}</div>
+                    </div>
+                    <div className="bg-slate-950/60 rounded p-2">
+                      <div className="text-xs text-amber-400">Reservadas</div>
+                      <div className="text-sm font-bold text-amber-400">{p.reservedUnits}</div>
+                    </div>
+                    <div className="bg-slate-950/60 rounded p-2">
+                      <div className="text-xs text-rose-400">Vendidas</div>
+                      <div className="text-sm font-bold text-rose-400">{p.soldUnits}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex justify-between items-center text-xs text-slate-400">
+                    <span>Rango de Precios:</span>
+                    <span className="font-semibold text-white">
+                      ${Number(p.minPrice).toLocaleString()} — ${Number(p.maxPrice).toLocaleString()} USD
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {loading && (
           <div className="p-12 text-center text-slate-400 animate-pulse">
@@ -229,90 +318,75 @@ export default function InventoryAdminPage() {
 
         {!loading && !error && (
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+            <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+              <h2 className="text-sm font-bold text-white">
+                Catálogo de Inmuebles y Proyección de Disponibilidad
+              </h2>
+              <span className="text-xs text-slate-400">{assets.length} Inmuebles en Neon DB</span>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-800/60 text-slate-300 uppercase text-xs tracking-wider border-b border-slate-800">
                   <tr>
                     <th className="px-6 py-3.5">Código</th>
-                    <th className="px-6 py-3.5">Inmueble / Descripción</th>
-                    <th className="px-6 py-3.5">Tipo</th>
+                    <th className="px-6 py-3.5">Inmueble / Título</th>
                     <th className="px-6 py-3.5">Área (m²)</th>
-                    <th className="px-6 py-3.5">Precio Vigente</th>
-                    <th className="px-6 py-3.5">Estado</th>
-                    <th className="px-6 py-3.5 text-center">Acciones del Ciclo</th>
-                    <th className="px-6 py-3.5 text-center">Auditoría</th>
+                    <th className="px-6 py-3.5">Precio Vigente (USD)</th>
+                    <th className="px-6 py-3.5">Estado Comercial</th>
+                    <th className="px-6 py-3.5 text-center">Auditoría / Timeline</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
-                  {assets.map((asset) => (
-                    <tr key={asset.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="px-6 py-4 font-mono font-semibold text-amber-400">
-                        {asset.code}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="font-medium text-white">{asset.name}</div>
-                        <div className="text-xs text-slate-400 truncate max-w-xs">
-                          {asset.description || 'Sin descripción'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-slate-300 font-mono text-xs">
-                        {asset.assetType}
-                      </td>
-                      <td className="px-6 py-4 text-slate-300">
-                        {asset.areaM2 ? `${asset.areaM2} m²` : '-'}
-                      </td>
-                      <td className="px-6 py-4 font-semibold text-white">
-                        {asset.currency}{' '}
-                        {Number(asset.currentPrice).toLocaleString('en-US', {
-                          minimumFractionDigits: 2,
-                        })}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStatusBadge(
-                            asset.status
-                          )}`}
-                        >
-                          {asset.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {actionLoadingId === asset.id ? (
-                          <span className="text-xs text-slate-400 animate-pulse">
-                            Actualizando...
-                          </span>
-                        ) : asset.status === 'DRAFT' ? (
+                  {assets.map((asset) => {
+                    const title = asset.title || asset.name || 'Sin título';
+                    const price = Number(asset.price || asset.currentPrice || 0);
+                    const area = asset.area || asset.areaM2;
+                    const status = asset.commercialStatus || asset.status || 'DRAFT';
+
+                    return (
+                      <tr key={asset.id} className="hover:bg-slate-800/30 transition-colors">
+                        <td className="px-6 py-4 font-mono font-semibold text-amber-400">
+                          {asset.code}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="font-medium text-white">{title}</div>
+                          <div className="text-xs text-slate-400 truncate max-w-xs">
+                            {asset.description || 'Sin descripción'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-slate-300">
+                          {area ? `${area} m²` : '-'}
+                        </td>
+                        <td className="px-6 py-4 font-semibold text-white">
+                          ${price.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1 items-start">
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStatusBadge(
+                                status
+                              )}`}
+                            >
+                              {status === 'RESERVATION_HOLD' ? '⏳ RESERVATION HOLD' : status}
+                            </span>
+                            {asset.holdExpiresAt && (
+                              <span className="text-[10px] text-amber-400/80 font-mono">
+                                Hold activo hasta {new Date(asset.holdExpiresAt).toLocaleTimeString()}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
                           <button
-                            onClick={() => handleStatusTransition(asset.id, 'IN_REVIEW')}
-                            className="bg-purple-600 hover:bg-purple-500 text-white text-xs px-3 py-1.5 rounded font-medium transition cursor-pointer shadow-sm"
+                            onClick={() => viewTimeline(asset)}
+                            className="text-xs text-slate-300 hover:text-amber-400 bg-slate-800 border border-slate-700 hover:border-amber-500/50 px-2.5 py-1 rounded transition cursor-pointer"
                           >
-                            Enviar a Revisión →
+                            Ver Timeline
                           </button>
-                        ) : asset.status === 'IN_REVIEW' ? (
-                          <button
-                            onClick={() => handleStatusTransition(asset.id, 'AVAILABLE')}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded font-medium transition cursor-pointer shadow-sm"
-                          >
-                            Aprobar Disponible ✓
-                          </button>
-                        ) : asset.status === 'AVAILABLE' ? (
-                          <span className="text-xs text-emerald-400 font-medium">
-                            ● Listo para Venta
-                          </span>
-                        ) : (
-                          <span className="text-xs text-slate-500">-</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <button
-                          onClick={() => viewTimeline(asset)}
-                          className="text-xs text-slate-300 hover:text-amber-400 bg-slate-800 border border-slate-700 hover:border-amber-500/50 px-2.5 py-1 rounded transition cursor-pointer"
-                        >
-                          Ver Timeline
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
