@@ -259,7 +259,7 @@ model Unit {
 
 model Requirement {
   id             String           @id @default(cuid())
-  opportunityId  String           @map("opportunity_id")
+  opportunityId  String           @unique @map("opportunity_id")
   operationType  String           @map("operation_type") @db.VarChar(20)
   assetType      String           @map("asset_type") @db.VarChar(30)
   zones          String[]         @default([])
