@@ -1,0 +1,158 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["core", "crm", "iam", "inventory"]
+}
+
+model Asset {
+  id         String   @id
+  project_id String?
+  code       String   @unique @db.VarChar(50)
+  title      String   @db.VarChar(200)
+  type       String   @db.VarChar(50)
+  status     String   @default("AVAILABLE") @db.VarChar(50)
+  price      Decimal  @db.Decimal(12, 2)
+  currency   String   @default("USD") @db.VarChar(3)
+  area       Decimal? @db.Decimal(10, 2)
+  details    Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  projects   Project? @relation(fields: [project_id], references: [id])
+  units      Unit[]
+
+  @@map("assets")
+  @@schema("inventory")
+}
+
+model Project {
+  id          String   @id
+  name        String   @db.VarChar(200)
+  description String?
+  location    String?  @db.VarChar(255)
+  status      String   @default("ACTIVE") @db.VarChar(50)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  assets      Asset[]
+
+  @@map("projects")
+  @@schema("inventory")
+}
+
+model Unit {
+  id        String   @id
+  asset_id  String
+  code      String   @db.VarChar(50)
+  floor     Int?
+  price     Decimal? @db.Decimal(12, 2)
+  status    String   @default("AVAILABLE") @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  assets    Asset    @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+
+  @@map("units")
+  @@schema("inventory")
+}
+
+model parties {
+  id         String   @id
+  party_type String   @default("PERSON") @db.VarChar(50)
+  full_name  String?  @db.VarChar(200)
+  email      String?  @db.VarChar(255)
+  phone      String?  @db.VarChar(50)
+  created_at DateTime @default(now())
+  updated_at DateTime
+  leads      leads[]
+
+  @@schema("core")
+}
+
+model leads {
+  id             String          @id
+  full_name      String?         @db.VarChar(200)
+  first_name     String?         @db.VarChar(100)
+  last_name      String?         @db.VarChar(100)
+  email          String?         @db.VarChar(255)
+  phone          String?         @db.VarChar(50)
+  source         String?         @db.VarChar(50)
+  message        String?
+  asset_id       String?
+  party_id       String?
+  assigned_to    String?         @db.VarChar(100)
+  assigned_to_id String?
+  status         String          @default("NEW") @db.VarChar(50)
+  created_at     DateTime        @default(now())
+  updated_at     DateTime
+  parties        parties?        @relation(fields: [party_id], references: [id])
+  opportunities  opportunities[]
+
+  @@schema("crm")
+}
+
+model opportunities {
+  id             String        @id
+  lead_id        String
+  title          String        @db.VarChar(200)
+  stage          String        @default("QUALIFICATION") @db.VarChar(50)
+  amount         Decimal?      @db.Decimal(12, 2)
+  currency       String        @default("USD") @db.VarChar(3)
+  assigned_to_id String?
+  created_at     DateTime      @default(now())
+  updated_at     DateTime
+  leads          leads         @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+  requirements   requirements?
+  visits         visits[]
+
+  @@schema("crm")
+}
+
+model requirements {
+  id             String        @id
+  opportunity_id String        @unique
+  operation_type String        @db.VarChar(20)
+  asset_type     String        @db.VarChar(30)
+  zones          String[]      @default([])
+  budget_min     Decimal?      @db.Decimal(12, 2)
+  budget_max     Decimal?      @db.Decimal(12, 2)
+  currency       String        @default("USD") @db.VarChar(3)
+  area_min       Decimal?      @db.Decimal(10, 2)
+  area_max       Decimal?      @db.Decimal(10, 2)
+  attributes     Json?
+  time_horizon   String?       @db.VarChar(30)
+  created_at     DateTime      @default(now())
+  updated_at     DateTime
+  opportunities  opportunities @relation(fields: [opportunity_id], references: [id], onDelete: Cascade)
+
+  @@schema("crm")
+}
+
+model visits {
+  id             String        @id
+  opportunity_id String
+  scheduled_at   DateTime
+  status         String        @default("SCHEDULED") @db.VarChar(50)
+  notes          String?
+  created_at     DateTime      @default(now())
+  updated_at     DateTime
+  opportunities  opportunities @relation(fields: [opportunity_id], references: [id], onDelete: Cascade)
+
+  @@schema("crm")
+}
+
+model users {
+  id            String   @id
+  email         String   @unique @db.VarChar(255)
+  password_hash String   @db.VarChar(255)
+  first_name    String   @db.VarChar(100)
+  last_name     String?  @db.VarChar(100)
+  role          String   @default("USER") @db.VarChar(50)
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime
+
+  @@schema("iam")
+}

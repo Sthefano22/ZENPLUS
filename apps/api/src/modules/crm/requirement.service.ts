@@ -1,4 +1,5 @@
 import { prisma } from '../../lib/prisma';
+import { randomUUID } from 'crypto';
 import type { CreateRequirementInput, UpdateRequirementInput } from './requirement.schema';
 
 export class RequirementNotFoundError extends Error {
@@ -9,7 +10,7 @@ export class RequirementNotFoundError extends Error {
 }
 
 export async function createRequirement(input: CreateRequirementInput) {
-  const opportunity = await prisma.opportunity.findUnique({
+  const opportunity = await prisma.opportunities.findUnique({
     where: { id: input.opportunityId },
   });
 
@@ -17,26 +18,27 @@ export async function createRequirement(input: CreateRequirementInput) {
     throw new Error(`Opportunity ${input.opportunityId} no existe`);
   }
 
-  return prisma.requirement.create({
+  return prisma.requirements.create({
     data: {
-      opportunityId: input.opportunityId,
-      operationType: input.operationType,
-      assetType: input.assetType,
+      id: randomUUID(),
+      opportunity_id: input.opportunityId,
+      operation_type: input.operationType,
+      asset_type: input.assetType,
       zones: input.zones,
-      budgetMin: input.budgetMin,
-      budgetMax: input.budgetMax,
+      budget_min: input.budgetMin ?? null,
+      budget_max: input.budgetMax ?? null,
       currency: input.currency,
-      areaMin: input.areaMin,
-      areaMax: input.areaMax,
-      attributes: input.attributes,
-      timeHorizon: input.timeHorizon,
+      area_min: input.areaMin ?? null,
+      area_max: input.areaMax ?? null,
+      attributes: input.attributes ?? undefined,
+      time_horizon: input.timeHorizon ?? null,
     },
   });
 }
 
 export async function getRequirementByOpportunity(opportunityId: string) {
-  const requirement = await prisma.requirement.findFirst({
-    where: { opportunityId },
+  const requirement = await prisma.requirements.findFirst({
+    where: { opportunity_id: opportunityId },
   });
 
   if (!requirement) {
@@ -47,14 +49,25 @@ export async function getRequirementByOpportunity(opportunityId: string) {
 }
 
 export async function updateRequirement(id: string, input: UpdateRequirementInput) {
-  const existing = await prisma.requirement.findUnique({ where: { id } });
+  const existing = await prisma.requirements.findUnique({ where: { id } });
 
   if (!existing) {
     throw new RequirementNotFoundError(id);
   }
 
-  return prisma.requirement.update({
+  return prisma.requirements.update({
     where: { id },
-    data: input,
+    data: {
+      operation_type: input.operationType,
+      asset_type: input.assetType,
+      zones: input.zones,
+      budget_min: input.budgetMin ?? null,
+      budget_max: input.budgetMax ?? null,
+      currency: input.currency,
+      area_min: input.areaMin ?? null,
+      area_max: input.areaMax ?? null,
+      attributes: input.attributes ?? undefined,
+      time_horizon: input.timeHorizon ?? null,
+    },
   });
 }

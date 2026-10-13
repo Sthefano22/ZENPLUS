@@ -1,8 +1,46 @@
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
+import type { Metadata } from 'next'
 import { getPropertyBySlug } from '@/lib/api'
 import Badge from '@/components/ui/Badge'
 import LeadForm from '@/components/forms/LeadForm'
+
+function esImagenUnsplash(url: string): boolean {
+  try {
+    return new URL(url).hostname === 'images.unsplash.com'
+  } catch {
+    return false
+  }
+}
+
+function conAncho(url: string, ancho: number): string {
+  const u = new URL(url)
+  u.searchParams.set('w', String(ancho))
+  return u.toString()
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string }
+}): Promise<Metadata> {
+  const propiedad = await getPropertyBySlug(params.slug)
+  if (!propiedad) return { title: 'Propiedad no encontrada' }
+
+  const titulo = `${propiedad.titulo} — ${propiedad.ubicacion}`
+  const descripcion = `${propiedad.subtitulo}. ${propiedad.areaM2}m², ${propiedad.dormitorios} dormitorios, ${propiedad.banos} baños. ${propiedad.operacion === 'venta' ? 'En venta' : 'En alquiler'} en ${propiedad.distrito}.`
+
+  return {
+    title: titulo,
+    description: descripcion,
+    openGraph: {
+      title: titulo,
+      description: descripcion,
+      images: [{ url: propiedad.imagen }],
+      type: 'website',
+    },
+  }
+}
 
 export default async function PropiedadPage({ params }: { params: { slug: string } }) {
   const propiedad = await getPropertyBySlug(params.slug)
@@ -12,13 +50,57 @@ export default async function PropiedadPage({ params }: { params: { slug: string
   const precioTexto =
     propiedad.operacion === 'alquiler' ? `USD $${precioFormateado} / mes` : `USD $${precioFormateado}`
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: propiedad.titulo,
+    description: propiedad.descripcion,
+    image: propiedad.imagen,
+    offers: {
+      '@type': 'Offer',
+      priceCurrency: propiedad.moneda,
+      price: propiedad.precio,
+      availability: 'https://schema.org/InStock',
+    },
+    additionalProperty: [
+      { '@type': 'PropertyValue', name: 'Área', value: `${propiedad.areaM2} m²` },
+      { '@type': 'PropertyValue', name: 'Dormitorios', value: propiedad.dormitorios },
+      { '@type': 'PropertyValue', name: 'Baños', value: propiedad.banos },
+    ],
+  }
+
   return (
     <div className="pb-24">
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <div className="relative mx-auto aspect-[16/7] max-w-7xl px-6 pt-6 lg:px-10">
         <div className="relative h-full w-full overflow-hidden rounded-2xl">
           <Image src={propiedad.imagen} alt={propiedad.titulo} fill sizes="100vw" className="object-cover" priority />
         </div>
       </div>
+
+      {esImagenUnsplash(propiedad.imagen) && (
+        <div className="mx-auto mt-3 grid max-w-7xl grid-cols-2 gap-3 px-6 lg:px-10">
+          <div className="relative aspect-[16/9] overflow-hidden rounded-xl">
+            <Image
+              src={conAncho(propiedad.imagen, 400)}
+              alt={`${propiedad.titulo} - vista adicional 1`}
+              fill
+              sizes="(max-width: 768px) 50vw, 25vw"
+              className="object-cover"
+            />
+          </div>
+          <div className="relative aspect-[16/9] overflow-hidden rounded-xl">
+            <Image
+              src={conAncho(propiedad.imagen, 600)}
+              alt={`${propiedad.titulo} - vista adicional 2`}
+              fill
+              sizes="(max-width: 768px) 50vw, 25vw"
+              className="object-cover"
+            />
+          </div>
+        </div>
+      )}
 
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-14 px-6 pt-12 lg:grid-cols-[1.7fr_1fr] lg:px-10">
         <div>

@@ -1,9 +1,10 @@
 'use client'
-
 import { useState, FormEvent } from 'react'
+import Link from 'next/link'
 import { motion, AnimatePresence } from 'motion/react'
 import { validarFormularioConsulta } from '@/lib/validators'
 import { submitLead } from '@/lib/api'
+import { trackEvent } from '@/lib/analytics'
 
 const inputClass =
   'w-full rounded-lg border border-outline-variant bg-surface-mid px-4 py-3.5 font-hanken text-[15px] text-on-surface outline-none placeholder:text-outline focus:border-primary transition-colors'
@@ -13,18 +14,22 @@ export default function LeadForm({ propiedadRef }: { propiedadRef?: string }) {
   const [email, setEmail] = useState('')
   const [telefono, setTelefono] = useState('')
   const [mensaje, setMensaje] = useState('')
+  const [consentimiento, setConsentimiento] = useState(false)
   const [errores, setErrores] = useState<Record<string, string>>({})
   const [estado, setEstado] = useState<'idle' | 'enviando' | 'enviado' | 'error'>('idle')
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     const validacion = validarFormularioConsulta({ nombre, email, telefono, mensaje })
-    setErrores(validacion.errores)
-    if (!validacion.valido) return
+    const nuevosErrores = { ...validacion.errores }
+    if (!consentimiento) nuevosErrores.consentimiento = 'Debes aceptar la política de privacidad.'
+    setErrores(nuevosErrores)
+    if (!validacion.valido || !consentimiento) return
 
     setEstado('enviando')
     const res = await submitLead({ nombre, email, telefono, mensaje, propiedadRef })
     setEstado(res.ok ? 'enviado' : 'error')
+    if (res.ok) trackEvent('lead_submitted', { propertyId: propiedadRef, origen: 'ficha' })
   }
 
   if (estado === 'enviado') {
@@ -48,10 +53,10 @@ export default function LeadForm({ propiedadRef }: { propiedadRef?: string }) {
         <label htmlFor="nombre" className="font-hanken text-[13px] text-on-surface-variant">
           Nombre completo
         </label>
-        <input id="nombre" className={inputClass} value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Tu nombre" />
+        <input id="nombre" aria-required="true" className={inputClass} value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Tu nombre" />
         <AnimatePresence>
           {errores.nombre && (
-            <motion.span initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden font-hanken text-xs text-error">
+            <motion.span aria-live="polite" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden font-hanken text-xs text-error">
               {errores.nombre}
             </motion.span>
           )}
@@ -62,10 +67,10 @@ export default function LeadForm({ propiedadRef }: { propiedadRef?: string }) {
         <label htmlFor="email" className="font-hanken text-[13px] text-on-surface-variant">
           Correo electrónico
         </label>
-        <input id="email" type="email" className={inputClass} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tucorreo@ejemplo.com" />
+        <input id="email" type="email" aria-required="true" className={inputClass} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tucorreo@ejemplo.com" />
         <AnimatePresence>
           {errores.email && (
-            <motion.span initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden font-hanken text-xs text-error">
+            <motion.span aria-live="polite" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden font-hanken text-xs text-error">
               {errores.email}
             </motion.span>
           )}
@@ -79,7 +84,7 @@ export default function LeadForm({ propiedadRef }: { propiedadRef?: string }) {
         <input id="telefono" className={inputClass} value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="+51 9XX XXX XXX" />
         <AnimatePresence>
           {errores.telefono && (
-            <motion.span initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden font-hanken text-xs text-error">
+            <motion.span aria-live="polite" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden font-hanken text-xs text-error">
               {errores.telefono}
             </motion.span>
           )}
@@ -90,21 +95,47 @@ export default function LeadForm({ propiedadRef }: { propiedadRef?: string }) {
         <label htmlFor="mensaje" className="font-hanken text-[13px] text-on-surface-variant">
           Mensaje
         </label>
-        <textarea id="mensaje" rows={4} className={inputClass} value={mensaje} onChange={(e) => setMensaje(e.target.value)} placeholder="Cuéntanos qué estás buscando..." />
+        <textarea id="mensaje" rows={4} aria-required="true" className={inputClass} value={mensaje} onChange={(e) => setMensaje(e.target.value)} placeholder="Cuéntanos qué estás buscando..." />
         <AnimatePresence>
           {errores.mensaje && (
-            <motion.span initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden font-hanken text-xs text-error">
+            <motion.span aria-live="polite" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden font-hanken text-xs text-error">
               {errores.mensaje}
             </motion.span>
           )}
         </AnimatePresence>
       </div>
 
-      {estado === 'error' && <p className="font-hanken text-sm text-error">No se pudo enviar tu consulta. Intenta nuevamente.</p>}
+      <div className="flex flex-col gap-2">
+        <label htmlFor="consentimiento" className="flex items-start gap-2 font-hanken text-[13px] text-on-surface-variant">
+          <input
+            id="consentimiento"
+            type="checkbox"
+            aria-required="true"
+            checked={consentimiento}
+            onChange={(e) => setConsentimiento(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-outline-variant accent-[color:var(--color-primary)]"
+          />
+          <span>
+            He leído y acepto la{' '}
+            <Link href="/privacidad" className="text-primary">
+              política de privacidad
+            </Link>{' '}
+            de ZENPLUS
+          </span>
+        </label>
+        {errores.consentimiento && (
+          <p aria-live="polite" className="font-hanken text-xs text-error">{errores.consentimiento}</p>
+        )}
+      </div>
+
+      {estado === 'error' && (
+        <p aria-live="polite" className="font-hanken text-sm text-error">No se pudo enviar tu consulta. Intenta nuevamente.</p>
+      )}
 
       <motion.button
         type="submit"
         disabled={estado === 'enviando'}
+        aria-disabled={estado === 'enviando'}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         className="mt-1 rounded-full bg-primary px-6 py-4 font-hanken text-[15px] font-semibold text-on-primary disabled:cursor-not-allowed disabled:opacity-60"

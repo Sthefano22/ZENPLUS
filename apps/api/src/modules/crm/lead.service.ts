@@ -1,31 +1,31 @@
 import { prisma } from "../../lib/prisma";
 import { pickAdvisor } from "./assignment.service";
-import { calculateSlaDueAt } from "./sla.service";
 import { resolveParty } from "./party.service";
 import type { CreateLeadInput } from "./lead.schema";
 import { logger } from "../../lib/logger";
 import { track } from "../../lib/analytics";
+import { randomUUID } from "crypto";
 
 export async function createLead(input: CreateLeadInput) {
   const assignedTo = pickAdvisor();
-  const slaDueAt = calculateSlaDueAt();
+
   const { partyId, isNew } = await resolveParty({
     email: input.email,
     phone: input.phone,
     fullName: input.fullName,
   });
 
-  const lead = await prisma.lead.create({
+  const lead = await prisma.leads.create({
     data: {
+      id: randomUUID(),
       source: input.source,
-      fullName: input.fullName,
+      full_name: input.fullName,
       email: input.email,
       phone: input.phone,
       message: input.message,
-      assetId: input.assetId,
-      partyId,
-      assignedTo,
-      slaDueAt,
+      asset_id: input.assetId ?? null,
+      party_id: partyId,
+      assigned_to: assignedTo,
       status: "ASSIGNED",
     },
   });
@@ -42,10 +42,10 @@ export async function createLead(input: CreateLeadInput) {
 }
 
 export async function listMyLeads(advisorId: string) {
-  return prisma.lead.findMany({
-    where: { assignedTo: advisorId },
-    orderBy: { createdAt: "desc" },
-    include: { activities: true, opportunity: true, party: true },
+  return prisma.leads.findMany({
+    where: { assigned_to_id: advisorId },
+    orderBy: { created_at: "desc" },
+    include: { activities: true, opportunities: true, parties: true },
   });
 }
 
@@ -54,16 +54,17 @@ export async function registerContact(
   advisorId: string,
   input: { outcome: string; notes?: string; type: string }
 ) {
-  const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+  const lead = await prisma.leads.findUnique({ where: { id: leadId } });
   if (!lead) throw new Error("LEAD_NOT_FOUND");
 
-  const activity = await prisma.activity.create({
+  const activity = await prisma.activities.create({
     data: {
-      leadId,
-      type: input.type as any,
+      id: randomUUID(),
+      lead_id: leadId,
+      type: input.type,
       outcome: input.outcome,
       notes: input.notes,
-      createdBy: advisorId,
+      created_by: advisorId,
     },
   });
 
@@ -74,12 +75,9 @@ export async function registerContact(
       ? "CONTACTED"
       : lead.status;
 
-  const updated = await prisma.lead.update({
+  const updated = await prisma.leads.update({
     where: { id: leadId },
-    data: {
-      status: newStatus,
-      firstContactAt: lead.firstContactAt ?? new Date(),
-    },
+    data: { status: newStatus },
   });
 
   logger.info({ leadId, advisorId, outcome: input.outcome }, "Contact registered");
@@ -93,33 +91,32 @@ export async function qualifyLead(
   advisorId: string,
   input: { amount?: number; currency?: string }
 ) {
-  const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+  const lead = await prisma.leads.findUnique({ where: { id: leadId } });
   if (!lead) throw new Error("LEAD_NOT_FOUND");
 
-  const opportunity = await prisma.opportunity.create({
+  const opportunity = await prisma.opportunities.create({
     data: {
-      leadId,
+      id: randomUUID(),
+      lead_id: leadId,
+      title: lead.full_name ?? "Oportunidad sin título",
       stage: "QUALIFIED",
       amount: input.amount ?? null,
       currency: input.currency ?? "PEN",
     },
   });
 
-  await prisma.lead.update({
+  await prisma.leads.update({
     where: { id: leadId },
-    data: {
-      status: "QUALIFIED",
-      qualifiedAt: new Date(),
-    },
+    data: { status: "QUALIFIED" },
   });
 
-  await prisma.activity.create({
+  await prisma.activities.create({
     data: {
-      leadId,
+      lead_id: leadId,
       type: "NOTE",
       outcome: "QUALIFIED",
       notes: `Convertido a Opportunity ${opportunity.id}`,
-      createdBy: advisorId,
+      created_by: advisorId,
     },
   });
 

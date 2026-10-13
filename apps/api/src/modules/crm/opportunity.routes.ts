@@ -7,7 +7,7 @@ import { z } from "zod";
 const stageChangeSchema = z.object({
   stage: z.enum([
     "NEW",
-    "QUALIFIED",
+    "QUALIFICATION",
     "VISIT_SCHEDULED",
     "OFFER",
     "RESERVATION",
@@ -22,17 +22,17 @@ export async function opportunityRoutes(app: FastifyInstance) {
     "/crm/opportunities",
     { preHandler: [(app as any).authenticate] },
     async () => {
-      return prisma.opportunity.findMany({
-        orderBy: { updatedAt: "desc" },
+      return prisma.opportunities.findMany({
+        orderBy: { updated_at: "desc" },
         include: {
-          lead: {
+          leads: {
             select: {
               id: true,
-              fullName: true,
+              full_name: true,
               email: true,
               phone: true,
-              assignedTo: true,
-              assetId: true,
+              assigned_to: true,
+              asset_id: true,
             },
           },
         },
@@ -44,13 +44,13 @@ export async function opportunityRoutes(app: FastifyInstance) {
     "/crm/opportunities/:id",
     { preHandler: [(app as any).authenticate] },
     async (req: any, reply) => {
-      const opp = await prisma.opportunity.findUnique({
-        where: { id: req.params.id },
+      const opp = await prisma.opportunities.findUnique({
+        where: { id: req.params.id as string },
         include: {
-          lead: {
+          leads: {
             include: {
-              activities: { orderBy: { createdAt: "desc" } },
-              party: true,
+              activities: { orderBy: { created_at: "desc" } },
+              parties: true,
             },
           },
         },
@@ -73,7 +73,7 @@ export async function opportunityRoutes(app: FastifyInstance) {
     async () => {
       const stages = [
         "NEW",
-        "QUALIFIED",
+        "QUALIFICATION",
         "VISIT_SCHEDULED",
         "OFFER",
         "RESERVATION",
@@ -84,8 +84,8 @@ export async function opportunityRoutes(app: FastifyInstance) {
       const counts = await Promise.all(
         stages.map(async (stage) => ({
           stage,
-          count: await prisma.opportunity.count({
-            where: { stage: stage as any },
+          count: await prisma.opportunities.count({
+            where: { stage },
           }),
         }))
       );
@@ -103,15 +103,10 @@ export async function opportunityRoutes(app: FastifyInstance) {
       const input = stageChangeSchema.parse(req.body);
 
       try {
-        const opp = await prisma.opportunity.update({
-          where: { id: req.params.id },
+        const opp = await prisma.opportunities.update({
+          where: { id: req.params.id as string },
           data: {
             stage: input.stage,
-            closedAt:
-              input.stage === "WON" || input.stage === "LOST"
-                ? new Date()
-                : null,
-            closeReason: input.closeReason ?? null,
           },
         });
 

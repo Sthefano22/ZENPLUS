@@ -6,7 +6,7 @@ export const assetTypeEnum = z.enum(['LOT', 'APARTMENT', 'HOUSE', 'COMMERCIAL_SP
 const requirementBaseSchema = z.object({
   opportunityId: z.string().min(1),
   operationType: operationTypeEnum,
-  assetType: assetTypeEnum.optional(),
+  assetType: assetTypeEnum,
   zones: z.array(z.string()).min(1, 'Debe incluir al menos una zona'),
   budgetMin: z.number().positive().optional(),
   budgetMax: z.number().positive().optional(),

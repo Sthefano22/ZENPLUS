@@ -1,15 +1,13 @@
 import { prisma } from "../../lib/prisma";
+import { randomUUID } from "crypto";
 import { logger } from "../../lib/logger";
-import type {
-  CreateAssetInput,
-  ChangeStatusInput,
-} from "./asset.schema";
+import type { CreateAssetInput, ChangeStatusInput } from "./asset.schema";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
-  DRAFT: ["IN_REVIEW", "UNDER_REVIEW"],
+  DRAFT: ["IN_REVIEW", "UNDER_REVIEW", "AVAILABLE"],
   UNDER_REVIEW: ["AVAILABLE", "DRAFT"],
   IN_REVIEW: ["AVAILABLE", "DRAFT"],
-  AVAILABLE: ["RESERVED", "IN_REVIEW", "UNDER_REVIEW"],
+  AVAILABLE: ["RESERVED", "IN_REVIEW", "UNDER_REVIEW", "SOLD"],
   RESERVED: ["SOLD", "AVAILABLE"],
   SOLD: [],
 };
@@ -21,78 +19,69 @@ export async function listPublicAssets(filters: {
 }) {
   const where: any = { status: "AVAILABLE" };
 
-  if (filters.assetType) where.assetType = filters.assetType;
+  if (filters.assetType) where.type = filters.assetType;
   if (filters.minPrice || filters.maxPrice) {
-    where.currentPrice = {};
-    if (filters.minPrice) where.currentPrice.gte = filters.minPrice;
-    if (filters.maxPrice) where.currentPrice.lte = filters.maxPrice;
+    where.price = {};
+    if (filters.minPrice) where.price.gte = filters.minPrice;
+    if (filters.maxPrice) where.price.lte = filters.maxPrice;
   }
 
-  return prisma.asset.findMany({
+  return prisma.assets.findMany({
     where,
-    orderBy: { currentPrice: "asc" },
+    orderBy: { price: "asc" },
     include: {
-      parties: {
-        select: { id: true, organizations: { select: { trade_name: true } } },
-      },
+      projects: true,
+      units: true,
     },
   });
 }
 
 export async function getAssetById(id: string) {
-  return prisma.asset.findUnique({
+  return prisma.assets.findUnique({
     where: { id },
     include: {
-      parties: {
-        include: {
-          organizations: true,
-          persons: true,
-        },
-      },
-      timeline: { orderBy: { createdAt: "desc" }, take: 10 },
+      projects: true,
+      units: true,
+      timelines: { orderBy: { created_at: "desc" }, take: 10 },
     },
   });
 }
 
 export async function listAllAssets() {
-  return prisma.asset.findMany({
-    orderBy: { createdAt: "desc" },
+  return prisma.assets.findMany({
+    orderBy: { created_at: "desc" },
     include: {
-      parties: {
-        include: { organizations: true },
-      },
+      projects: true,
     },
   });
 }
 
 export async function createAsset(input: CreateAssetInput) {
-  // Si no viene ownerPartyId, usar la primera organización
-  let ownerPartyId = input.ownerPartyId;
-  if (!ownerPartyId) {
-    const firstOrg = await prisma.organizations.findFirst();
-    ownerPartyId = firstOrg?.party_id;
-  }
+  const assetId = randomUUID();
 
-  const asset = await prisma.asset.create({
+  const asset = await prisma.assets.create({
     data: {
+      id: assetId,
       code: input.code.toUpperCase().trim(),
-      name: input.name.trim(),
-      description: input.description,
-      assetType: input.assetType,
-      status: "DRAFT",
-      areaM2: input.areaM2,
+      title: input.name.trim(),
+      details: input.description ? ({ description: input.description } as any) : undefined,
+      type: input.assetType,
+      status: "AVAILABLE",
+      area: input.areaM2 ?? null,
       currency: input.currency,
-      currentPrice: input.currentPrice,
-      ownerPartyId,
+      price: input.currentPrice,
+      commercial_status: "AVAILABLE",
+      publication_status: "DRAFT",
     },
   });
 
-  await prisma.assetTimeline.create({
+  await prisma.asset_timelines.create({
     data: {
-      assetId: asset.id,
-      previousStatus: null,
-      newStatus: "DRAFT",
-      actionType: "CREATED",
+      id: randomUUID(),
+      asset_id: asset.id,
+      previous_status: null,
+      new_status: "AVAILABLE",
+      action_type: "CREATED",
       details: `Asset creado con código ${asset.code}`,
     },
   });
@@ -106,7 +95,7 @@ export async function changeAssetStatus(
   input: ChangeStatusInput,
   actor: string
 ) {
-  const asset = await prisma.asset.findUnique({ where: { id } });
+  const asset = await prisma.assets.findUnique({ where: { id } });
   if (!asset) throw new Error("ASSET_NOT_FOUND");
 
   const currentStatus = asset.status;
@@ -118,28 +107,34 @@ export async function changeAssetStatus(
     );
   }
 
-  const updated = await prisma.asset.update({
+  const updated = await prisma.assets.update({
     where: { id },
-    data: { status: input.nextStatus as any },
+    data: { status: input.nextStatus },
   });
 
-  await prisma.assetTimeline.create({
+  await prisma.asset_timelines.create({
     data: {
-      assetId: id,
-      previousStatus: currentStatus,
-      newStatus: input.nextStatus,
-      actionType: "STATUS_CHANGE",
-      details: input.notes || `Cambio de ${currentStatus} a ${input.nextStatus} por ${actor}`,
+      id: randomUUID(),
+      asset_id: id,
+      previous_status: currentStatus,
+      new_status: input.nextStatus,
+      action_type: "STATUS_CHANGE",
+      details:
+        input.notes ||
+        `Cambio de ${currentStatus} a ${input.nextStatus} por ${actor}`,
     },
   });
 
-  logger.info({ assetId: id, from: currentStatus, to: input.nextStatus }, "Asset status changed");
+  logger.info(
+    { assetId: id, from: currentStatus, to: input.nextStatus },
+    "Asset status changed"
+  );
   return updated;
 }
 
 export async function getAssetTimeline(id: string) {
-  return prisma.assetTimeline.findMany({
-    where: { assetId: id },
-    orderBy: { createdAt: "desc" },
+  return prisma.asset_timelines.findMany({
+    where: { asset_id: id },
+    orderBy: { created_at: "desc" },
   });
 }

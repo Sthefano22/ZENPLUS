@@ -1,4 +1,4 @@
-import type { Propiedad, Proyecto } from '@/types'
+import type { Propiedad, Proyecto, Unidad } from '@/types'
 
 export const propiedades: Propiedad[] = [
   {
@@ -221,4 +221,22 @@ export const proyectos: Proyecto[] = [
       'Lotes desde 600m² hasta 1200m² en una de las zonas más tranquilas y verdes de Lima.',
     imagen: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
   },
+]
+
+export const unidades: Unidad[] = [
+  // ZEN Tower Luxury Residences
+  { id: 'u1', proyectoSlug: 'zen-tower-luxury-residences', codigo: 'A-1204', torre: 'A', piso: 12, tipo: 'departamento', areaM2: 180, dormitorios: 3, banos: 3, precio: 320000, estado: 'Disponible' },
+  { id: 'u2', proyectoSlug: 'zen-tower-luxury-residences', codigo: 'A-1508', torre: 'A', piso: 15, tipo: 'departamento', areaM2: 210, dormitorios: 3, banos: 3.5, precio: 385000, estado: 'Disponible' },
+  { id: 'u3', proyectoSlug: 'zen-tower-luxury-residences', codigo: 'B-2101', torre: 'B', piso: 21, tipo: 'penthouse', areaM2: 340, dormitorios: 4, banos: 4.5, precio: 620000, estado: 'Reservada' },
+  { id: 'u4', proyectoSlug: 'zen-tower-luxury-residences', codigo: 'B-0805', torre: 'B', piso: 8, tipo: 'departamento', areaM2: 165, dormitorios: 2, banos: 2.5, precio: 295000, estado: 'Vendida' },
+
+  // ZEN Miraflores Bay Residences
+  { id: 'u5', proyectoSlug: 'zen-miraflores-bay-residences', codigo: 'C-0301', torre: 'Única', piso: 3, tipo: 'departamento', areaM2: 150, dormitorios: 2, banos: 2, precio: 580000, estado: 'Disponible' },
+  { id: 'u6', proyectoSlug: 'zen-miraflores-bay-residences', codigo: 'C-1102', torre: 'Única', piso: 11, tipo: 'departamento', areaM2: 195, dormitorios: 3, banos: 3, precio: 710000, estado: 'Disponible' },
+  { id: 'u7', proyectoSlug: 'zen-miraflores-bay-residences', codigo: 'C-1701', torre: 'Única', piso: 17, tipo: 'penthouse', areaM2: 260, dormitorios: 3, banos: 3.5, precio: 980000, estado: 'Reservada' },
+
+  // ZEN Hacienda Master Plan
+  { id: 'u8', proyectoSlug: 'zen-hacienda-master-plan', codigo: 'Lote-14', torre: '—', piso: 1, tipo: 'casa', areaM2: 600, dormitorios: 0, banos: 0, precio: 850000, estado: 'Disponible' },
+  { id: 'u9', proyectoSlug: 'zen-hacienda-master-plan', codigo: 'Lote-27', torre: '—', piso: 1, tipo: 'casa', areaM2: 900, dormitorios: 0, banos: 0, precio: 1150000, estado: 'Disponible' },
+  { id: 'u10', proyectoSlug: 'zen-hacienda-master-plan', codigo: 'Lote-33', torre: '—', piso: 1, tipo: 'casa', areaM2: 1200, dormitorios: 0, banos: 0, precio: 1480000, estado: 'Disponible' },
 ]

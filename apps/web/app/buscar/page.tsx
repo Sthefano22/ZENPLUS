@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import PropertyCard from '@/components/ui/PropertyCard'
 import Skeleton from '@/components/ui/Skeleton'
 import { getProperties } from '@/lib/api'
+import { trackEvent } from '@/lib/analytics'
 import type { FiltrosBusqueda, Operacion, PropiedadResumen, TipoPropiedad } from '@/types'
 
 const DISTRITOS = ['San Isidro', 'Miraflores', 'La Molina', 'Barranco', 'Santiago de Surco']
@@ -32,7 +33,16 @@ export default function BuscarPage() {
   }, [filtros])
 
   function actualizar<K extends keyof FiltrosBusqueda>(key: K, value: FiltrosBusqueda[K]) {
-    setFiltros((prev) => ({ ...prev, [key]: value || undefined }))
+    setFiltros((prev) => {
+      const next = { ...prev, [key]: value || undefined }
+      trackEvent('search_filter', {
+        operacion: next.operacion,
+        tipo: next.tipo,
+        distrito: next.distrito,
+        dormitorios: next.dormitorios,
+      })
+      return next
+    })
   }
 
   return (

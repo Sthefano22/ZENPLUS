@@ -1,6 +1,15 @@
 import type { FastifyInstance } from "fastify";
-import {createLeadSchema, contactLeadSchema, qualifyLeadSchema} from "./lead.schema";
-import {createLead, listMyLeads, registerContact, qualifyLead} from "./lead.service";
+import {
+  createLeadSchema,
+  contactLeadSchema,
+  qualifyLeadSchema,
+} from "./lead.schema";
+import {
+  createLead,
+  listMyLeads,
+  registerContact,
+  qualifyLead,
+} from "./lead.service";
 import { isEnabled } from "../../lib/featureFlags";
 
 export async function leadRoutes(app: FastifyInstance) {
@@ -17,8 +26,8 @@ export async function leadRoutes(app: FastifyInstance) {
     return reply.status(201).send({
       id: lead.id,
       status: lead.status,
-      assignedTo: lead.assignedTo,
-      slaDueAt: lead.slaDueAt,
+      assignedTo: lead.assigned_to,
+      slaDueAt: lead.sla_due_at,
     });
   });
 

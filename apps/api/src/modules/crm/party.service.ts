@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/prisma";
+import { randomUUID } from "crypto";
 
 export async function resolveParty(input: {
   email?: string;
@@ -10,19 +11,20 @@ export async function resolveParty(input: {
   if (input.phone) or.push({ phone: input.phone });
 
   const existing = or.length
-    ? await prisma.party.findFirst({ where: { OR: or } })
+    ? await prisma.parties.findFirst({ where: { OR: or } })
     : null;
 
   if (existing) {
     return { partyId: existing.id, isNew: false };
   }
 
-  const created = await prisma.party.create({
+  const created = await prisma.parties.create({
     data: {
-      type: "PERSON",
-      email: input.email,
-      phone: input.phone,
-      fullName: input.fullName,
+      id: randomUUID(),
+      party_type: "PERSON",
+      email: input.email ?? null,
+      phone: input.phone ?? null,
+      full_name: input.fullName,
     },
   });
 

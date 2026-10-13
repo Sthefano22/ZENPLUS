@@ -1,5 +1,12 @@
+import type { Metadata } from 'next'
 import { getProjects } from '@/lib/api'
 import ProjectCard from '@/components/ui/ProjectCard'
+
+export const metadata: Metadata = {
+  title: 'Proyectos Inmobiliarios en Preventa y Construcción',
+  description:
+    'Nuevos desarrollos residenciales ZENPLUS en San Isidro, Miraflores y La Molina, desde preventa hasta entrega.',
+}
 
 export default async function ProyectosPage() {
   const proyectos = await getProjects()

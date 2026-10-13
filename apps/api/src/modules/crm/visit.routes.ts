@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
+import { z } from "zod";
 import {scheduleVisitSchema, rescheduleVisitSchema, cancelVisitSchema, completeVisitSchema, noShowVisitSchema} from './visit.schema';
-import {scheduleVisit, getVisit, rescheduleVisit, cancelVisit, completeVisit, markNoShow, VisitNotFoundError, InvalidVisitTransitionError} from './visit.service';
+import {scheduleVisit, getVisit, rescheduleVisit, cancelVisit, completeVisit, markNoShow, VisitNotFoundError, registerVisitOutcome, InvalidVisitTransitionError} from './visit.service';
 
 function handleVisitError(err: unknown, reply: any) {
   if (err instanceof VisitNotFoundError) {
@@ -19,7 +20,10 @@ function handleVisitError(err: unknown, reply: any) {
 }
 
 export async function visitRoutes(app: FastifyInstance) {
-  app.post('/visits', async (request, reply) => {
+  app.post(
+  '/visits',
+  { preHandler: [(app as any).authorize(['ADMIN', 'ADVISOR'])] },
+  async (request, reply) => {
     const parsed = scheduleVisitSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(422).send({
@@ -95,4 +99,23 @@ export async function visitRoutes(app: FastifyInstance) {
       return handleVisitError(err, reply);
     }
   });
+
+  const outcomeSchema = z.object({
+    outcome: z.string().min(1),
+    nextAction: z.string().optional(),
+    interestLevel: z.number().int().min(1).max(5).optional(),
+    notes: z.string().optional(),
+  });
+
+  app.post(
+    "/visits/:id/outcome",
+    { preHandler: [(app as any).authorize(["ADMIN", "ADVISOR"])] },
+    async (request: any, reply) => {
+      const id = request.params.id as string;
+      const body = outcomeSchema.parse(request.body);
+      const user = request.user;
+      const result = await registerVisitOutcome(id, body, user.id);
+      return reply.send(result);
+    }
+  );
 }

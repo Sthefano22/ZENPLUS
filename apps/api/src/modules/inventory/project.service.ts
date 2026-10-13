@@ -1,61 +1,69 @@
 import { prisma } from "../../lib/prisma";
+import { randomUUID } from "crypto";
 import { logger } from "../../lib/logger";
 import type { CreateProjectInput, CreateUnitInput } from "./project.schema";
 
 export async function listPublicProjects() {
-  return prisma.project.findMany({
-    where: { status: { in: ["PRE_SALE", "CONSTRUCTION", "DELIVERED"] } },
-    orderBy: { createdAt: "desc" },
+  return prisma.projects.findMany({
+    where: { status: { in: ["ACTIVE", "PRE_SALE", "CONSTRUCTION", "DELIVERED"] } },
+    orderBy: { created_at: "desc" },
     include: {
-      units: {
-        where: { status: "AVAILABLE" },
-        orderBy: { currentPrice: "asc" },
-      },
+      assets: true,
     },
   });
 }
 
 export async function getProjectById(id: string) {
-  return prisma.project.findUnique({
+  return prisma.projects.findUnique({
     where: { id },
-    include: { units: true },
+    include: { assets: true },
   });
 }
 
 export async function listAllProjects() {
-  return prisma.project.findMany({
-    orderBy: { createdAt: "desc" },
-    include: { units: true },
+  return prisma.projects.findMany({
+    orderBy: { created_at: "desc" },
+    include: { assets: true },
   });
 }
 
 export async function createProject(input: CreateProjectInput) {
-  const project = await prisma.project.create({
+  const project = await prisma.projects.create({
     data: {
-      code: input.code.toUpperCase().trim(),
+      id: randomUUID(),
       name: input.name.trim(),
-      description: input.description,
-      status: input.status,
-      district: input.district,
-      city: input.city,
+      description: input.description ?? null,
+      location: input.district
+        ? `${input.district}${input.city ? `, ${input.city}` : ""}`
+        : null,
+      status: input.status ?? "ACTIVE",
     },
   });
-  logger.info({ projectId: project.id, code: project.code }, "Project created");
+  logger.info({ projectId: project.id, name: project.name }, "Project created");
   return project;
 }
 
 export async function createUnit(input: CreateUnitInput) {
-  const unit = await prisma.unit.create({
+  // En Neon, units cuelga de assets, no de projects.
+  // Buscamos el primer asset del proyecto para asociar la unit.
+  const asset = await prisma.assets.findFirst({
+    where: { project_id: input.projectId },
+  });
+
+  if (!asset) {
+    throw new Error(
+      `No existe ningún asset en el proyecto ${input.projectId} para asociar la unidad`
+    );
+  }
+
+  const unit = await prisma.units.create({
     data: {
-      projectId: input.projectId,
+      id: randomUUID(),
+      asset_id: asset.id,
       code: input.code.toUpperCase().trim(),
-      name: input.name.trim(),
-      unitType: input.unitType,
-      areaM2: input.areaM2,
-      bedrooms: input.bedrooms,
-      bathrooms: input.bathrooms,
-      currentPrice: input.currentPrice,
-      status: input.status,
+      floor: input.bedrooms ?? 0,
+      price: input.currentPrice ?? null,
+      status: input.status ?? "AVAILABLE",
     },
   });
   logger.info({ unitId: unit.id, code: unit.code }, "Unit created");
