@@ -9,7 +9,7 @@ import { trackEvent } from '@/lib/analytics'
 const inputClass =
   'w-full rounded-lg border border-outline-variant bg-surface-mid px-4 py-3.5 font-hanken text-[15px] text-on-surface outline-none placeholder:text-outline focus:border-primary transition-colors'
 
-export default function LeadForm({ propiedadRef }: { propiedadRef?: string }) {
+export default function LeadForm({ propiedadRef, origen }: { propiedadRef?: string; origen?: string }) {
   const [nombre, setNombre] = useState('')
   const [email, setEmail] = useState('')
   const [telefono, setTelefono] = useState('')

@@ -1,21 +1,38 @@
-import { NextRequest, NextResponse } from 'next/server'
+import createMiddleware from 'next-intl/middleware'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-const RUTAS_PROTEGIDAS = ['/publicar', '/perfil']
+const intlMiddleware = createMiddleware({
+  locales: ['es', 'en', 'pt', 'fr', 'de'],
+  defaultLocale: 'es',
+})
 
-export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl
-  const requiereSesion = RUTAS_PROTEGIDAS.some((ruta) => pathname.startsWith(ruta))
-  if (!requiereSesion) return NextResponse.next()
+// Unificación de rutas protegidas en un único punto (Cierra D-014)
+const RUTAS_PROTEGIDAS = ['/perfil', '/admin', '/commercial', '/dashboard', '/portal']
 
-  const session = req.cookies.get('zenplus_session')
-  if (!session) {
-    const loginUrl = new URL('/login', req.url)
-    loginUrl.searchParams.set('next', pathname)
-    return NextResponse.redirect(loginUrl)
+export default function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // Limpiar el idioma de la ruta para verificar protección
+  const localeMatch = pathname.match(/^\/(es|en|pt|fr|de)(\/.*)?$/)
+  const pathnameSinLocale = localeMatch ? localeMatch[2] || '/' : pathname
+  const locale = localeMatch ? localeMatch[1] : 'es'
+
+  const protegida = RUTAS_PROTEGIDAS.some((r) => pathnameSinLocale.startsWith(r))
+
+  if (protegida) {
+    const sesion = request.cookies.get('zenplus_session')?.value
+    if (!sesion) {
+      const url = request.nextUrl.clone()
+      url.pathname = `/${locale}/login`
+      url.searchParams.set('next', pathnameSinLocale)
+      return NextResponse.redirect(url)
+    }
   }
-  return NextResponse.next()
+
+  return intlMiddleware(request)
 }
 
 export const config = {
-  matcher: ['/publicar/:path*', '/perfil/:path*'],
+  matcher: ['/((?!api|_next|_vercel|.*\\..*).*)'],
 }

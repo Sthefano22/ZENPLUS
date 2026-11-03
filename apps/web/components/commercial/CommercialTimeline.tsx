@@ -51,12 +51,42 @@ function IconEstado() {
   )
 }
 
+function IconHito() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" {...iconProps} aria-hidden="true">
+      <circle cx="12" cy="12" r="3" />
+      <circle cx="12" cy="12" r="9" />
+    </svg>
+  )
+}
+
+function IconDocumento() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" {...iconProps} aria-hidden="true">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+    </svg>
+  )
+}
+
+function IconPago() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" {...iconProps} aria-hidden="true">
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <path d="M2 10h20" />
+    </svg>
+  )
+}
+
 const ICONOS: Record<TimelineEvento['tipo'], () => JSX.Element> = {
   visita: IconVisita,
   oferta: IconOferta,
   reserva: IconReserva,
   nota: IconNota,
   estado: IconEstado,
+  hito: IconHito,
+  documento: IconDocumento,
+  pago: IconPago,
 }
 
 function formatearFecha(fecha: string): string {

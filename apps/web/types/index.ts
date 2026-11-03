@@ -83,6 +83,7 @@ export interface FormularioConsulta {
   telefono?: string
   mensaje: string
   propiedadRef?: string
+  origen?: 'ficha' | 'propietario' | 'web'
 }
 
 export interface FormularioPropietario {
@@ -242,8 +243,246 @@ export interface Reserva {
 
 export interface TimelineEvento {
   id: string
-  tipo: 'visita' | 'oferta' | 'reserva' | 'nota' | 'estado'
+  tipo: 'visita' | 'oferta' | 'reserva' | 'nota' | 'estado' | 'hito' | 'documento' | 'pago'
   descripcion: string
   fecha: string
   autor?: string
+}
+
+// ── Fase 3: Transaction & Experience ───────────────────────
+
+export type EtapaOperacion =
+  | 'Iniciada'
+  | 'Documentación'
+  | 'Contrato'
+  | 'Cierre'
+  | 'Completada'
+  | 'Cancelada'
+
+export type EstadoOperacion = 'Activa' | 'En Pausa' | 'Completada' | 'Cancelada'
+
+export type RolParte = 'comprador' | 'vendedor' | 'arrendatario' | 'propietario' | 'notario'
+
+export interface OperationParty {
+  id: string
+  rol: RolParte
+  nombre: string
+  email: string
+  telefono?: string
+}
+
+export interface OperationAsset {
+  id: string
+  slug: string
+  titulo: string
+  distrito: string
+  tipo: TipoPropiedad
+  precioAcordado: number
+  moneda: 'USD' | 'PEN'
+}
+
+export interface TransactionMilestone {
+  id: string
+  etapa: EtapaOperacion
+  titulo: string
+  descripcion: string
+  completado: boolean
+  fechaCompletado?: string
+  orden: number
+}
+
+export type EstadoDocumento =
+  | 'Pendiente'
+  | 'Cargado'
+  | 'En revisión'
+  | 'Aprobado'
+  | 'Rechazado'
+  | 'Vencido'
+
+export interface DocumentVersion {
+  version: number
+  archivoNombre: string
+  tamanoBytes: number
+  mimeType: string
+  subidoPor: string
+  subidoEn: string
+  urlAccesoTemporal?: string
+}
+
+export interface DocumentItem {
+  id: string
+  operationId: string
+  codigoRequisito: string
+  titulo: string
+  descripcion?: string
+  obligatorio: boolean
+  rolRequerido: RolParte
+  estado: EstadoDocumento
+  versiones: DocumentVersion[]
+  motivoRechazo?: string
+  actualizadoEn: string
+}
+
+export interface ContractStatus {
+  id: string
+  operationId: string
+  estado: 'Borrador' | 'En Revisión Legal' | 'Listo para Firma' | 'Firmado' | 'Elevado a Escritura'
+  numeroReferencia: string
+  notariaAsignada?: string
+  fechaObjetivoFirma?: string
+  observaciones?: string
+  actualizadoEn: string
+}
+
+export type EstadoObligacion = 'Pendiente' | 'Parcial' | 'Pagado' | 'Vencido'
+
+export interface Obligation {
+  id: string
+  operationId: string
+  concepto: string
+  monto: number
+  moneda: 'USD' | 'PEN'
+  fechaVencimiento: string
+  estado: EstadoObligacion
+  montoPagado: number
+  rolResponsable: RolParte
+}
+
+export interface Payment {
+  id: string
+  obligationId: string
+  monto: number
+  moneda: 'USD' | 'PEN'
+  fechaPago: string
+  metodoPago: 'Transferencia Bancaria' | 'Cheque de Gerencia' | 'Otro'
+  numeroOperacion: string
+  estado: 'Verificado' | 'En Verificación' | 'Rechazado'
+}
+
+export interface Operation {
+  id: string
+  codigo: string
+  opportunityId: string
+  reservaId: string
+  etapa: EtapaOperacion
+  estado: EstadoOperacion
+  activo: OperationAsset
+  partes: OperationParty[]
+  proximaAccion: string
+  creadoEn: string
+  actualizadoEn: string
+}
+
+// ── Fase 4: Data & Management Intelligence ─────────────────
+
+export type PeriodoDashboard = '7d' | '30d' | '90d' | '12m'
+export type RolDashboard = 'direccion' | 'asesor'
+
+export interface MetricContract {
+  id: string
+  nombre: string
+  descripcion: string
+  formula: string
+  fuente: string
+  freshnessMinutos: number
+  lastUpdated: string
+  isStale: boolean
+}
+
+export interface KPICard {
+  id: string
+  label: string
+  valor: number | string
+  unidad?: string
+  tendencia?: 'sube' | 'baja' | 'estable'
+  variacion?: number
+  periodo: PeriodoDashboard
+  metricContract: MetricContract
+  isStale: boolean
+  lastUpdated: string
+}
+
+export interface FunnelEtapa {
+  etapa: string
+  cantidad: number
+  porcentaje: number
+  color: string
+}
+
+export interface FunnelComercial {
+  periodo: PeriodoDashboard
+  etapas: FunnelEtapa[]
+  tasaConversionTotal: number
+  lastUpdated: string
+  isStale: boolean
+}
+
+export interface InventarioKPI {
+  totalActivos: number
+  disponibles: number
+  reservados: number
+  enNegociacion: number
+  publicados: number
+  consultasUltimos30d: number
+  rotacionPromedioDias: number
+  lastUpdated: string
+  isStale: boolean
+}
+
+export interface AsesorKPI {
+  asesorId: string
+  asesorNombre: string
+  leadsAsignados: number
+  sinResponder: number
+  visitasProgramadas: number
+  ofertasActivas: number
+  reservasActivas: number
+  tasaConversion: number
+  periodo: PeriodoDashboard
+  lastUpdated: string
+  isStale: boolean
+}
+
+export interface TransaccionKPI {
+  operacionesTotales: number
+  operacionesCerradas: number
+  operacionesEnProceso: number
+  tiempoPromedioCierreDias: number
+  valorTotalUSD: number
+  periodo: PeriodoDashboard
+  lastUpdated: string
+  isStale: boolean
+}
+
+export interface SourcePerformance {
+  fuente: string
+  leads: number
+  conversion: number
+  porcentajeDelTotal: number
+}
+
+export interface SourceKPI {
+  periodo: PeriodoDashboard
+  fuentes: SourcePerformance[]
+  disclaimer: string
+  lastUpdated: string
+  isStale: boolean
+}
+
+export interface XENIAInsight {
+  id: string
+  titulo: string
+  descripcion: string
+  fuente: string
+  fechaGenerado: string
+  alcance: string
+  nivelCerteza: 'Alto' | 'Medio' | 'Exploratorio'
+  categoria: 'inventario' | 'comercial' | 'asesor' | 'mercado'
+}
+
+export interface DashboardFilters {
+  periodo: PeriodoDashboard
+  zona?: string
+  asesorId?: string
+  fuente?: string
 }
