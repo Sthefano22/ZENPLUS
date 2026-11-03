@@ -18,6 +18,8 @@ import { availabilityRoutes } from "./modules/inventory/availability.routes";
 import { offerRoutes } from "./modules/crm/offer.routes";
 import { reservationRoutes } from "./modules/crm/reservation.routes";
 import { interestRoutes } from "./modules/crm/interest.routes";
+import { financeRoutes } from "./modules/finance/finance.routes";
+import { startReservationExpirationScheduler } from "./modules/crm/reservation-expiration.scheduler";
 
 async function main() {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
@@ -50,9 +52,11 @@ async function main() {
   await app.register(offerRoutes);
   await app.register(reservationRoutes);
   await app.register(interestRoutes);
+  await app.register(financeRoutes);
 
   const port = Number(process.env.PORT ?? 3000);
   await app.listen({ port, host: "0.0.0.0" });
+  startReservationExpirationScheduler();
   console.log(`ZENPLUS API on :${port}`);
 }
 

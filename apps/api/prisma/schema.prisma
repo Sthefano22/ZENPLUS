@@ -399,22 +399,29 @@ model finance_payments {
 // ============================================
 
 model operations {
-  id             String         @id @default(uuid()) @db.Uuid
-  code           String         @db.VarChar(50)
-  operation_type OperationType  @default(SALE)
-  stage          OperationStage @default(RESERVATION_HANDOFF)
-  agreed_amount  Decimal        @db.Decimal(14, 2)
-  currency       String         @default("USD") @db.VarChar(3)
-  reservation_id String?        @db.Uuid
-  notes          String?
-  created_at     DateTime       @default(now()) @db.Timestamptz(6)
-  updated_at     DateTime       @updatedAt @db.Timestamptz(6)
+  id                    String         @id @default(uuid()) @db.Uuid
+  code                  String?        @db.VarChar(50)
+  source_reservation_id String?        @unique
+  opportunity_id        String?
+  asset_id              String?
+  operation_type        OperationType  @default(SALE)
+  stage                 OperationStage @default(RESERVATION_HANDOFF)
+  agreed_amount         Decimal        @default(0) @db.Decimal(14, 2)
+  currency              String         @default("USD") @db.VarChar(3)
+  status                String         @default("OPEN") @db.VarChar(30)
+  reservation_snapshot  Json?
+  notes                 String?
+  created_by            String?
+  created_at            DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime       @updatedAt @db.Timestamptz(6)
 
   operation_assets     operation_assets[]
   operation_parties    operation_parties[]
+  operation_status_history operation_status_history[]
+  operation_participants   operation_participants[]
   reservation_handoffs reservation_handoffs[]
 
-  @@schema("operation")
+  @@schema("crm")
 }
 
 model operation_assets {

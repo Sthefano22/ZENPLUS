@@ -267,3 +267,102 @@ export async function getReservation(id: string) {
     },
   });
 }
+
+export async function expireDueReservations(): Promise<{
+  expiredReservations: number;
+  releasedAssets: number;
+}> {
+  return prisma.$transaction(async (tx) => {
+    // 1. Bloquear los assets que tienen reservas vencidas (SKIP LOCKED)
+    const assetsWithExpiredReservations = await tx.$queryRaw<
+      Array<{ id: string }>
+    >`
+      SELECT a.id
+      FROM inventory.assets a
+      WHERE EXISTS (
+        SELECT 1
+        FROM crm.reservations r
+        WHERE r.asset_id = a.id
+          AND r.status = 'ACTIVE'
+          AND r.expires_at <= CURRENT_TIMESTAMP
+      )
+      ORDER BY a.id
+      FOR UPDATE OF a SKIP LOCKED
+    `;
+
+    const assetIds = assetsWithExpiredReservations.map((row) => row.id);
+
+    if (assetIds.length === 0) {
+      return { expiredReservations: 0, releasedAssets: 0 };
+    }
+
+    // 2. Marcar reservas vencidas como EXPIRED
+    const expiredReservations = await tx.reservations.updateMany({
+      where: {
+        asset_id: { in: assetIds },
+        status: "ACTIVE",
+        expires_at: { lte: new Date() },
+      },
+      data: {
+        status: "EXPIRED",
+      },
+    });
+
+    // 3. Liberar assets (commercial_status = AVAILABLE)
+    const releasedResult = await tx.$executeRaw`
+      UPDATE inventory.assets a
+      SET commercial_status = 'AVAILABLE',
+          updated_at = CURRENT_TIMESTAMP
+      WHERE a.id = ANY(${assetIds}::text[])
+        AND a.status = 'AVAILABLE'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM crm.reservations r
+          WHERE r.asset_id = a.id
+            AND r.status = 'ACTIVE'
+            AND r.expires_at > CURRENT_TIMESTAMP
+        )
+    `;
+    const releasedAssets = { count: releasedResult };
+
+    // 4. Borrar holds activos
+    await tx.asset_active_holds.deleteMany({
+      where: { asset_id: { in: assetIds } },
+    });
+
+    // 5. Timeline + domain events para cada asset
+    for (const assetId of assetIds) {
+      await tx.asset_timelines.create({
+        data: {
+          id: randomUUID(),
+          asset_id: assetId,
+          previous_status: "RESERVATION_HOLD",
+          new_status: "AVAILABLE",
+          action_type: "RESERVATION_EXPIRED",
+          details: JSON.stringify({
+            reason: "Reserva vencida automáticamente",
+            expiredAt: new Date().toISOString(),
+          }),
+        },
+      });
+
+      await tx.inventory_domain_events.create({
+        data: {
+          id: randomUUID(),
+          event_type: "reservation_expired",
+          aggregate_type: "ASSET",
+          aggregate_id: assetId,
+          payload: {
+            reason: "Reserva vencida automáticamente",
+            expiredAt: new Date().toISOString(),
+          } as any,
+        },
+      });
+    }
+
+    return {
+      expiredReservations: expiredReservations.count,
+      releasedAssets: releasedAssets.count,
+    };
+  });
+}
