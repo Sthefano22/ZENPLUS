@@ -14,6 +14,7 @@ import { visitRoutes } from "./modules/crm/visit.routes";
 import { assetRoutes } from "./modules/inventory/asset.routes";
 import { projectRoutes } from "./modules/inventory/project.routes";
 import { authRoutes } from "./modules/iam/auth.routes";
+import { analyticsRoutes } from "./modules/analytics.routes";
 
 async function main() {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
@@ -25,6 +26,7 @@ async function main() {
     keyGenerator: (req) => req.ip,
   });
   await registerAuth(app);
+  await app.register(analyticsRoutes, { prefix: "/api/analytics" });
   await registerAuthorize(app);
   app.addHook("onRequest", requestIdHook);
   app.addHook("onResponse", async (req, reply) => {
