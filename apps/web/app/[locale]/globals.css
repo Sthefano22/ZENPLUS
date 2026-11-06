@@ -1,0 +1,162 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-surface: #0d1320;
+  --color-surface-container-lowest: #080e1b;
+  --color-surface-container-low: #161b29;
+  --color-surface-container: #1a1f2d;
+  --color-surface-container-high: #242a38;
+  --color-surface-bright: #333948;
+
+  --color-primary: #ffe795;
+  --color-on-primary: #3b2f00;
+  --color-primary-container: #e6ca65;
+  --color-on-primary-container: #675400;
+
+  --color-secondary: #bdc6e2;
+  --color-on-surface: #dde2f5;
+  --color-on-surface-variant: #cec6b2;
+
+  --color-error: #ffb4ab;
+  --color-outline: #97907e;
+  --color-outline-variant: #4c4637;
+}
+
+/* ---------- Tema claro: blanco cálido + el mismo dorado de marca (sin azules) ---------- */
+[data-theme="light"] {
+  --color-surface: #fdfbf6;
+  --color-surface-container-lowest: #f6f1e4;
+  --color-surface-container-low: #f4eedd;
+  --color-surface-container: #ffffff;
+  --color-surface-container-high: #faf6ea;
+  --color-surface-bright: #ffffff;
+
+  --color-primary: #f2d675;
+  --color-on-primary: #2a2000;
+  --color-primary-container: #f5e7b0;
+  --color-on-primary-container: #5c4700;
+
+  --color-secondary: #7a6a43;
+  --color-on-surface: #1c1a14;
+  --color-on-surface-variant: #5a5240;
+
+  --color-error: #b3261e;
+  --color-outline: #a89f86;
+  --color-outline-variant: #e3dac0;
+
+  /* Dorado un poco más profundo solo para TEXTO sobre fondo claro */
+  --color-primary-strong: #a67c00;
+}
+
+/* El dorado brillante no se lee como texto sobre blanco: se oscurece solo el texto */
+[data-theme="light"] .text-primary,
+[data-theme="light"] .text-primary-container,
+[data-theme="light"] .hover\:text-primary:hover {
+  color: var(--color-primary-strong);
+}
+[data-theme="light"] .focus\:border-primary:focus,
+[data-theme="light"] .hover\:border-primary:hover {
+  border-color: var(--color-primary-strong);
+}
+
+/* Fondos/hover translúcidos blancos (pensados para modo oscuro) -> tinte dorado suave */
+[data-theme="light"] .bg-white\/5,
+[data-theme="light"] .hover\:bg-white\/5:hover {
+  background-color: rgb(166 124 0 / 0.07);
+}
+[data-theme="light"] .bg-white\/10,
+[data-theme="light"] .hover\:bg-white\/10:hover {
+  background-color: rgb(166 124 0 / 0.11);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: #f6f1e4;
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #e6d9ae;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-surface);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-surface-container-lowest);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-bright);
+  border-radius: 9999px;
+}
+
+/* Menú desplegable (Radix): entrada suave, respeta reduced-motion */
+@keyframes menu-pop {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.menu-pop[data-state="open"] {
+  animation: menu-pop 0.14s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu-pop[data-state="open"] { animation: none; }
+  body { transition: none; }
+}
+
+/* Tarjeta de cristal del buscador del hero (sigue al tema activo) */
+.glass-card {
+  background: color-mix(in srgb, var(--color-surface-container-low) 82%, transparent);
+}
+
+/* Hero: paginación con barra de progreso (6 s = delay del autoplay) y zoom lento */
+.hero-bullets .swiper-pagination-bullet {
+  position: relative;
+  width: 36px;
+  height: 3px;
+  margin: 0 4px 0 0 !important;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 0.35);
+  opacity: 1;
+}
+.hero-bullets .swiper-pagination-bullet::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #ffe795;
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.hero-bullets .swiper-pagination-bullet-active::after {
+  animation: hero-progress 6s linear forwards;
+}
+@keyframes hero-progress {
+  to { transform: scaleX(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-bullets .swiper-pagination-bullet-active::after { animation: none; transform: scaleX(1); }
+}
+.hero-slide img {
+  transform: scale(1);
+  transition: transform 8s ease-out;
+}
+.hero-slide.swiper-slide-active img {
+  transform: scale(1.08);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-slide img,
+  .hero-slide.swiper-slide-active img { transform: none; transition: none; }
+}
